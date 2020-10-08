@@ -1,4 +1,4 @@
-# Mandelbrot set
+# 3d object
 
 
 ## Requirements
