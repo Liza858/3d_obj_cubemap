@@ -16,4 +16,12 @@
 
 3. ./3d_obj_cubemap_run
 
+## Examples
+
+![1](./examples/1.png)
+
+![2](./examples/2.png)
+
+![3](./examples/3.png)
+
 

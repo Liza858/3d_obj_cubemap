@@ -145,13 +145,16 @@ int main(int, char **)
    ImGui_ImplOpenGL3_Init(glsl_version);
    ImGui::StyleColorsDark();
 
-   static float reflection = 0.5;
-      static float refraction = 0.5;
+   static float reflection = 0.15;
+   static float refraction = 0.5;
+   static float refraction_coeff = 1.00 / 1.52;
+
+   glDepthFunc(GL_LEQUAL);
+   glEnable(GL_DEPTH_TEST);
 
    while (!glfwWindowShouldClose(window))
    {
       glfwPollEvents();
-
 
       // Get windows size
       int display_w, display_h;
@@ -172,8 +175,9 @@ int main(int, char **)
       // GUI
       ImGui::Begin("Settings");
       ImGui::SliderInt("zoom sensitivity, %", &zoom_sensitivity, 0, 100);
-      ImGui::SliderFloat("reflection", &reflection, 0, 1);
-      ImGui::SliderFloat("refraction", &refraction, 0, 1);
+      ImGui::SliderFloat("refraction_coeff", &refraction_coeff, 0, 1);
+      ImGui::SliderFloat("reflection_intensivity", &reflection, 0, 1);
+      ImGui::SliderFloat("refraction_intensivity", &refraction, 0, 1);
       ImGui::End();
 
         
@@ -193,20 +197,27 @@ int main(int, char **)
       auto projection = glm::perspective<float>(90, float(display_w) / display_h, 0.1, 100);
 
 
+      glClear(unsigned(GL_COLOR_BUFFER_BIT) | unsigned(GL_DEPTH_BUFFER_BIT));
+
       env_shader.use();
       env_shader.set_uniform("projection", glm::value_ptr(projection));
       env_shader.set_uniform("view", glm::value_ptr(view));
       env_shader.set_uniform("environment", 1);
       env.render(env_shader, cubemap_texture);
 
+
       obj_shader.use();
       obj_shader.set_uniform("model", glm::value_ptr(model));
       obj_shader.set_uniform("view", glm::value_ptr(view));
       obj_shader.set_uniform("projection", glm::value_ptr(projection));
       obj_shader.set_uniform("camera_position", camera.x, camera.y, camera.z);
-      obj_shader.set_uniform("refraction", refraction);
-      obj_shader.set_uniform("reflection", reflection);
+      obj_shader.set_uniform("refraction_coeff", refraction_coeff);
+      obj_shader.set_uniform("reflection_intensivity", reflection);
+      obj_shader.set_uniform("refraction_intensivity", refraction);
+      obj_shader.set_uniform("obj_texture", 0);
+      obj_shader.set_uniform("cubemap_texture", 1);
       obj.render(obj_shader, obj_textute, cubemap_texture);
+
 
       glBindVertexArray(0);
 

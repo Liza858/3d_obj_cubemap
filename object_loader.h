@@ -83,13 +83,15 @@ class Object {
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap_texture);
 
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS); 
         shader.use();
         glBindVertexArray(vao);
+
+     //   cout << glGetError() << endl;
+
         glDrawElements(GL_TRIANGLES, vertices_count, GL_UNSIGNED_INT, 0);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_ALWAYS); 
+
+
+    //    cout << glGetError() << endl;
   }
 
 };
