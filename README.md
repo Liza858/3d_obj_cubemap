@@ -5,7 +5,7 @@
 
 - 3.3 core profile
 - prereqs - conan, cmake
-- deps - glfw, glew, imgui, glm
+- deps - glfw, glew, imgui, glm, stb, tinyobjloader
 - run.cmd/run.sh
 
 ## How to execute
@@ -23,5 +23,7 @@
 ![2](./examples/2.png)
 
 ![3](./examples/3.png)
+
+![4](./examples/4.png)
 
 
