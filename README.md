@@ -14,11 +14,6 @@
 
 2. cd build
 
-3. ./mandelbrot_run
+3. ./3d_obj_cubemap_run
 
 
-## Examples
-
-![1](./examples/1.png)
-
-![2](./examples/2.png)

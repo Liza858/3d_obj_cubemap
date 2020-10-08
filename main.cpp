@@ -23,14 +23,18 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "opengl_shader.h"
+#include "environment.h"
+#include "textures.h"
+#include "object_loader.h"
 
 float mouse_offset_x = 0.0;
 float mouse_offset_y = 0.0;
 
-float center_position_x = 0.0;
-float center_position_y = 0.0;
-float half_width = 0.5;
+float angle_x = 0.0;
+float angle_y = 0.0;
+
 int zoom_sensitivity = 10;
+float zoom = 0.1;
 
 double mouse_prev_x = 0.0;
 double mouse_prev_y = 0.0;
@@ -43,63 +47,12 @@ static void glfw_error_callback(int error, const char *description)
 }
 
 
-float texture_colors[] = {   
-   1.0f,   0.0f,   0.0f,
-   0.0f,   1.0f,   0.0f,
-   0.0f,   0.0f,   1.0f,
-};
-
-const int texture_colors_count = 3;
-
-void create_triangles(GLuint &vbo, GLuint &vao, GLuint &ebo)
-{
-   // create the triangle
-   float triangle_vertices[] = {
-       -1.0f, -1.0f, 0.0f,	
-       1.0f, 0.0f, 0.0f,	 
-
-       -1.0f, 1.0f, 0.0f,  
-       0.0f, 1.0f, 0.0f,	 
-
-       1.0f, 1.0f, 0.0f, 
-       0.0f, 0.0f, 1.0f,	 
-
-       1.0f, -1.0f, 0.0f, 
-       0.0f, 0.0f, 1.0f,	
-   };
-   unsigned int triangle_indices[] = { 0, 1, 2, 2, 3, 0 };
-   glGenVertexArrays(1, &vao);
-   glGenBuffers(1, &vbo);
-   glGenBuffers(1, &ebo);
-   glBindVertexArray(vao);
-   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-   glBufferData(GL_ARRAY_BUFFER, sizeof(triangle_vertices), triangle_vertices, GL_STATIC_DRAW);
-   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(triangle_indices), triangle_indices, GL_STATIC_DRAW);
-   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
-   glEnableVertexAttribArray(0);
-   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
-   glEnableVertexAttribArray(1);
-   glBindBuffer(GL_ARRAY_BUFFER, 0);
-   glBindVertexArray(0);
-}
-
-std::pair<float, float> get_mouse_local_coords(int x, int y, int display_w, int display_h) {
-    float x_local = -1 * (1.0 * (display_w - x) / display_w * 2 - 1);
-    float y_local = 1.0 * (display_h - y) / display_h * 2 - 1;
-    return std::pair<float, float>(x_local, y_local);
-}
-
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-   half_width = half_width + half_width * yoffset * zoom_sensitivity / 100.0;
-   double x, y;
-   glfwGetCursorPos(window, &x, &y);
-   int width, height;
-   glfwGetWindowSize(window, &width, &height);
-   auto local_coords = get_mouse_local_coords(x, y, width, height);
-   center_position_x = center_position_x - (local_coords.first -  center_position_x) * yoffset * zoom_sensitivity / 100.0;;
-   center_position_y = center_position_y - (local_coords.second -  center_position_y) * yoffset * zoom_sensitivity / 100.0;;
+   zoom = zoom + yoffset * zoom_sensitivity / 10000.0;
+   if (zoom < 0) {
+      zoom = 0;
+   }
 }
 
 
@@ -113,10 +66,16 @@ void mouse_button_callback(GLFWwindow* window, int action)
          if (button_is_pressed) {
             mouse_offset_x = x - mouse_prev_x;
             mouse_offset_y = y - mouse_prev_y;  
-            center_position_x = center_position_x + 2.0 * mouse_offset_x / display_w;
-            center_position_y = center_position_y - 2.0 * mouse_offset_y / display_h;
             mouse_prev_x = x;
             mouse_prev_y = y;
+            angle_x -= mouse_offset_x * 0.25;
+            if (angle_y - mouse_offset_y * 0.25 > 89.9) {
+               angle_y = 89.9;
+            } else if (angle_y - mouse_offset_y * 0.25 < -89.9) {
+               angle_y = -89.9;
+            } else {
+               angle_y -= mouse_offset_y * 0.25;
+            }
          } else {
             button_is_pressed = true;
             mouse_prev_x = x - mouse_offset_x;
@@ -125,15 +84,6 @@ void mouse_button_callback(GLFWwindow* window, int action)
       } else if (action == GLFW_RELEASE) {
           button_is_pressed = false;
       }
-}
-
-void create_texture(GLuint & texture)
-{
-   glGenTextures(1, &texture);
-   glActiveTexture(GL_TEXTURE0);
-   glBindTexture(GL_TEXTURE_1D, texture);
-   glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, texture_colors_count, 0, GL_RGB, GL_FLOAT, texture_colors);
-   glBindTexture(GL_TEXTURE_1D, 0);
 }
 
 
@@ -166,19 +116,26 @@ int main(int, char **)
       return 1;
    }
 
-   // texture 
-   GLuint texture;
-   create_texture(texture);
-
-   // events
    glfwSetScrollCallback(window, scroll_callback);
 
-   // create our geometries
-   GLuint vbo, vao, ebo;
-   create_triangles(vbo, vao, ebo);
+   shader_t env_shader("environment.vs", "environment.fs");
+   shader_t obj_shader("obj.vs", "obj.fs");
 
-   // init shader
-   shader_t triangles_shader("simple-shader.vs", "simple-shader.fs");
+   std::array<std::string, 6> textures_src = {
+      "../environment/right.jpg",
+      "../environment/left.jpg",
+      "../environment/top.jpg",
+      "../environment/bottom.jpg",
+      "../environment/front.jpg",
+      "../environment/back.jpg"
+   };
+
+   GLuint cubemap_texture = CubemapTextureLoader::load(textures_src);
+   GLuint obj_textute = TextureLoader::load("../objects/fish.jpg");
+
+   Environment env;
+   Object obj = ObjLoader::load("../objects/", "../objects/fish.obj");
+
 
    // Setup GUI context
    IMGUI_CHECKVERSION();
@@ -188,10 +145,13 @@ int main(int, char **)
    ImGui_ImplOpenGL3_Init(glsl_version);
    ImGui::StyleColorsDark();
 
+   static float reflection = 0.5;
+      static float refraction = 0.5;
 
    while (!glfwWindowShouldClose(window))
    {
       glfwPollEvents();
+
 
       // Get windows size
       int display_w, display_h;
@@ -211,43 +171,44 @@ int main(int, char **)
 
       // GUI
       ImGui::Begin("Settings");
-      static int max_iterations = 30;
-      ImGui::SliderInt("max iterations", &max_iterations, 0, 1000);
-      ImGui::InputFloat("center x", &center_position_x);
-      ImGui::InputFloat("center y", &center_position_y);
       ImGui::SliderInt("zoom sensitivity, %", &zoom_sensitivity, 0, 100);
-      ImGui::ColorEdit3("first", texture_colors);
-      ImGui::ColorEdit3("second", texture_colors + 3);
-      ImGui::ColorEdit3("third", texture_colors + 6);
+      ImGui::SliderFloat("reflection", &reflection, 0, 1);
+      ImGui::SliderFloat("refraction", &refraction, 0, 1);
       ImGui::End();
 
+        
       // Mouse button press action
       if (!(ImGui::IsAnyWindowHovered() || ImGui::IsAnyItemHovered() || ImGui::IsAnyItemActive())) {
           auto mouse_action = glfwGetMouseButton(window, 0);
           mouse_button_callback(window, mouse_action);
       }
 
-      // Pass the parameters to the shader as uniforms
-      triangles_shader.set_uniform("center_position", center_position_x, center_position_y);
-      triangles_shader.set_uniform("half_width", half_width);
-      triangles_shader.set_uniform("max_iter", max_iterations);
-      triangles_shader.set_uniform("screen_w", display_w);
-      triangles_shader.set_uniform("screen_h", display_h);
+      glm::vec4 camera(0, 0, 1, 1);
+      auto x_rot = glm::rotate(glm::mat4(1), glm::radians(angle_x), glm::vec3(0, 1, 0));
+      camera = x_rot * camera;
+      camera = glm::rotate(glm::mat4(1), glm::radians(angle_y), glm::vec3(x_rot * glm::vec4(1, 0, 0, 1))) * camera;
+      auto model = glm::scale(glm::vec3(zoom, zoom, zoom));
+      model = glm::rotate(model, 3.14f / 2.0f, glm::vec3(-1.0f, 0.0f, 0.0f));
+      auto view = glm::lookAt<float>(glm::vec3(camera.x, camera.y, camera.z), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+      auto projection = glm::perspective<float>(90, float(display_w) / display_h, 0.1, 100);
 
 
-      triangles_shader.use();
-      glActiveTexture(GL_TEXTURE0);
-      glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, texture_colors_count, 0, GL_RGB, GL_FLOAT, texture_colors);
-      glBindTexture(GL_TEXTURE_1D, texture);
+      env_shader.use();
+      env_shader.set_uniform("projection", glm::value_ptr(projection));
+      env_shader.set_uniform("view", glm::value_ptr(view));
+      env_shader.set_uniform("environment", 1);
+      env.render(env_shader, cubemap_texture);
 
-      // Bind vertex array = buffers + indices
-      glBindVertexArray(vao);
-      // Execute draw call
-      glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+      obj_shader.use();
+      obj_shader.set_uniform("model", glm::value_ptr(model));
+      obj_shader.set_uniform("view", glm::value_ptr(view));
+      obj_shader.set_uniform("projection", glm::value_ptr(projection));
+      obj_shader.set_uniform("camera_position", camera.x, camera.y, camera.z);
+      obj_shader.set_uniform("refraction", refraction);
+      obj_shader.set_uniform("reflection", reflection);
+      obj.render(obj_shader, obj_textute, cubemap_texture);
+
       glBindVertexArray(0);
-
 
       // Generate gui render commands
       ImGui::Render();
