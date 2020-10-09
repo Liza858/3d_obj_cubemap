@@ -22,8 +22,5 @@
 
 ![2](./examples/2.png)
 
-![3](./examples/3.png)
-
-![4](./examples/4.png)
 
 
