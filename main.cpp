@@ -199,11 +199,15 @@ int main(int, char **)
 
       glClear(unsigned(GL_COLOR_BUFFER_BIT) | unsigned(GL_DEPTH_BUFFER_BIT));
 
+
+      // отключаем тест глубины, чтобы все рисовалось поверх environment
+      glDepthMask(GL_FALSE);
       env_shader.use();
       env_shader.set_uniform("projection", glm::value_ptr(projection));
       env_shader.set_uniform("view", glm::value_ptr(view));
       env_shader.set_uniform("environment", 1);
       env.render(env_shader, cubemap_texture);
+      glDepthMask(GL_TRUE);
 
 
       obj_shader.use();

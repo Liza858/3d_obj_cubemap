@@ -58,12 +58,6 @@ class Environment {
 
     Environment() {
 
-        float coef = 15;
-
-        for (size_t i = 0; i < sizeof(triangles_vertices) / sizeof(float); i++) {
-            triangles_vertices[i] *= coef;
-        }
-
         GLuint vbo, vao, ebo;
 
         glGenVertexArrays(1, &vao);
