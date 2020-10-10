@@ -4,9 +4,7 @@ project(opengl-imgui-sample CXX)
 set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 
-set(CMAKE_CXX_COMPILER /usr/bin/g++-7)
 SET(CMAKE_CXX_STANDARD 17)
-SET(CMAKE_CXX_FLAGS "-std=c++17")
 
 
 # CONFIG option is important so that CMake doesnt search for modules into the default modules directory
