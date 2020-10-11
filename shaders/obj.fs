@@ -22,10 +22,10 @@ void main() {
     float cos_refl = dot(-dir, normal);
     float sin2 = n_env / n_obj * n_env / n_obj * (1 - pow(cos_refl, 2));
     float cos_refr = pow(1 - sin2, 0.5);
-    float sin_refl = pow(1 - cos_refl * cos_refl, 0.5);
 
     vec3 refl_angle = reflect(dir, normalize(normal));
-    vec3 refr_angle = refract(dir, normalize(normal), n_env / n_obj * sin_refl);
+    vec3 refr_angle = refract(dir, normalize(normal), n_env / n_obj);
+
     vec4 reflect_part = vec4(texture(cubemap_texture, refl_angle).rgb, 1.0);
     vec4 refract_part = vec4(texture(cubemap_texture, refr_angle).rgb, 1.0);
     vec4 texture_color =  vec4(texture(obj_texture, out_tex_coords).rgb, 1.0);
@@ -35,10 +35,10 @@ void main() {
     float r2 =  pow((n_obj * cos_refr - n_env * cos_refl) / (n_obj * cos_refr + n_env * cos_refl), 2);
  
     float r = (r1 + r2) / 2;
-    float t = 1 - r;
     if (sin2 > 1) {
         r = 1;
     }
+    float t = 1 - r;
     vec4 rt = r * reflect_part + t * refract_part;
 
     gl_FragColor = mix(rt, texture_color, color_intensivity);

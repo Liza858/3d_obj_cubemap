@@ -133,8 +133,9 @@ int main(int, char **)
    GLuint cubemap_texture = CubemapTextureLoader::load(textures_src);
    GLuint obj_textute = TextureLoader::load("../objects/fish.jpg");
 
-   Environment env;
    Object obj = ObjLoader::load("../objects/", "../objects/fish.obj");
+
+   Environment env;
 
 
    // Setup GUI context
@@ -194,6 +195,7 @@ int main(int, char **)
       auto model = glm::scale(glm::vec3(zoom, zoom, zoom));
       model = glm::rotate(model, 3.14f / 2.0f, glm::vec3(-1.0f, 0.0f, 0.0f));
       auto view = glm::lookAt<float>(glm::vec3(camera.x, camera.y, camera.z), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+      auto view_cubemap = glm::lookAt<float>(glm::vec3(0, 0, 0), glm::vec3(-camera.x, -camera.y, -camera.z), glm::vec3(0, 1, 0));
       auto projection = glm::perspective<float>(90, float(display_w) / display_h, 0.1, 100);
 
 
@@ -204,7 +206,8 @@ int main(int, char **)
       glDepthMask(GL_FALSE);
       env_shader.use();
       env_shader.set_uniform("projection", glm::value_ptr(projection));
-      env_shader.set_uniform("view", glm::value_ptr(view));
+      env_shader.set_uniform("view", glm::value_ptr(view_cubemap));
+      env_shader.set_uniform("camera_pos", camera.x, camera.y, camera.z);
       env_shader.set_uniform("environment", 1);
       env.render(env_shader, cubemap_texture);
       glDepthMask(GL_TRUE);
